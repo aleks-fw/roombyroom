@@ -134,7 +134,7 @@ function init() {
  const compact=matchMedia('(max-width: 640px)').matches||matchMedia('(pointer: coarse)').matches;
  try { renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'}); } catch(e) { loader?.remove(); return; }
  try {
- renderer.setPixelRatio(Math.min(devicePixelRatio||1,2)); renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.shadowMap.enabled=!compact; renderer.shadowMap.type=THREE.PCFShadowMap;
+ const pixelRatio=devicePixelRatio||1;renderer.setPixelRatio(compact?Math.min(Math.max(pixelRatio,1.5),2):Math.min(pixelRatio,2)); renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.shadowMap.enabled=!compact; renderer.shadowMap.type=THREE.PCFShadowMap;
  scene=new THREE.Scene();scene.background=new THREE.Color(0xe7ece4);scene.fog=new THREE.Fog(0xe7ece4,45,70);
  camera=new THREE.PerspectiveCamera(37,1,.1,100);camera.position.set(-9.5,13,14);
  controls=new OrbitControls(camera,canvas);controls.target.set(-.6,.3,0);controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=12;controls.maxDistance=34;controls.maxPolarAngle=Math.PI*.48;
