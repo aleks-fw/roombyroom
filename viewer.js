@@ -138,7 +138,7 @@ function init() {
  scene=new THREE.Scene();scene.background=new THREE.Color(0xe7ece4);scene.fog=new THREE.Fog(0xe7ece4,45,70);
  camera=new THREE.PerspectiveCamera(37,1,.1,100);camera.position.set(-9.5,13,14);
  controls=new OrbitControls(camera,canvas);controls.target.set(-.6,.3,0);controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=12;controls.maxDistance=34;controls.maxPolarAngle=Math.PI*.48;
- if(matchMedia('(pointer: coarse)').matches){canvas.style.touchAction='none';controls.enableRotate=true;controls.enablePan=false;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;const hint=document.querySelector('#viewer-hint');if(hint)hint.textContent='Проведите по модели для вращения · два касания приближают';}
+ if(compact){canvas.style.touchAction='none';controls.enableRotate=true;controls.enablePan=false;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;const hint=document.querySelector('#viewer-hint');if(hint)hint.textContent='Проведите по модели для вращения · два касания приближают';}
  scene.add(new THREE.HemisphereLight(0xfff8e9,0x74796f,1.7)); const key=new THREE.DirectionalLight(0xffefd1,2.35);key.position.set(-4,8,5);key.castShadow=!compact;scene.add(key);
  apartment=new THREE.Group();scene.add(apartment);zoneMeshes=[];const roomFurniture={};
  for(const zone of ['living','bedroom','room12','kitchen','bathroom','toilet']) {roomFurniture[zone]=buildRoom(zone);if(zone==='bathroom'||zone==='toilet')roomFurniture[zone].scale.setScalar(1);}
@@ -147,7 +147,7 @@ function init() {
  for(const zone of Object.keys(roomFurniture)) simpleDecor(zone,roomFurniture[zone]);
  buildBalcony();
  finishBalconyAccess();
- raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();canvas.addEventListener('pointerdown',onPointerDown);canvas.addEventListener('pointermove',onPointerMove);canvas.addEventListener('pointerup',onPick);canvas.addEventListener('pointercancel',onPointerCancel);canvas.addEventListener('dblclick',onDoublePick);
+ raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();canvas.addEventListener('pointerdown',onPointerDown);canvas.addEventListener('pointermove',onPointerMove);canvas.addEventListener('pointerup',onPick);canvas.addEventListener('pointercancel',onPointerCancel);canvas.addEventListener('touchmove',lockViewerScroll,{passive:false});canvas.addEventListener('dblclick',onDoublePick);
   controls.addEventListener('change',scheduleRender);
   for(const eventName of ['pointerdown','pointermove','pointerup','wheel'])canvas.addEventListener(eventName,scheduleRender,{passive:true});
   new ResizeObserver(()=>{resize();scheduleRender();}).observe(canvas.parentElement);resize();
@@ -163,6 +163,7 @@ function resize(){if(!renderer||!camera)return;const target=document.querySelect
 function zoneAtPointer(event){const rect=event.currentTarget.getBoundingClientRect();pointer.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(zoneMeshes,false)[0]?.object.userData.zone;}
 function onPointerDown(event){if(event.pointerType!=='touch')return;activeTouches.add(event.pointerId);if(activeTouches.size===1)touchStart={x:event.clientX,y:event.clientY,moved:false};else{if(touchStart)touchStart.moved=true;lastTouchTap=null;}}
 function onPointerMove(event){if(!touchStart||event.pointerType!=='touch')return;if(Math.hypot(event.clientX-touchStart.x,event.clientY-touchStart.y)>10)touchStart.moved=true;}
+function lockViewerScroll(event){if(activeTouches.size&&event.cancelable)event.preventDefault();}
 function onPointerCancel(event){if(event.pointerType!=='touch')return;activeTouches.delete(event.pointerId);if(!activeTouches.size){touchStart=null;lastTouchTap=null;}}
 function onPick(event){if(event.pointerType==='touch'){activeTouches.delete(event.pointerId);if(activeTouches.size){if(touchStart)touchStart.moved=true;return;}}const tap=event.pointerType!=='touch'||(touchStart&&!touchStart.moved);touchStart=null;if(!tap)return;const zone=zoneAtPointer(event);if(zone)document.dispatchEvent(new CustomEvent('roombyroom:zone-pick',{detail:zone}));if(event.pointerType==='touch'&&zone){const now=Date.now();if(lastTouchTap&&lastTouchTap.zone===zone&&now-lastTouchTap.time<360&&Math.hypot(event.clientX-lastTouchTap.x,event.clientY-lastTouchTap.y)<28){lastTouchTap=null;onDoublePick(event);}else lastTouchTap={zone,time:now,x:event.clientX,y:event.clientY};}}
 function onDoublePick(event){const zone=zoneAtPointer(event),center=centers[zone];if(!center||!camera||!controls)return;const target=new THREE.Vector3(center[0],.45,center[2]),offset=camera.position.clone().sub(controls.target).multiplyScalar(.72);controls.target.copy(target);camera.position.copy(target).add(offset);controls.update();scheduleRender();}
