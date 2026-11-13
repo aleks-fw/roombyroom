@@ -24,6 +24,19 @@ npm start
 | `ROOM_DATA_DIR` | Каталог для базы данных и `owner.env` | `D:\\Codex\\Room-by-Room` на Windows; `./data` на других системах |
 | `ROOM_NODE_MODULES` | Каталог, в котором установлен пакет `three` | `./node_modules` или `ROOM_DATA_DIR/node_modules` |
 | `ROOM_ASSET_PATH` | Дополнительная GLB-модель | Путь к модели на Windows; `./assets/room.glb` на других системах |
+| `STORAGE_BACKEND` | Хранилище данных | `sqlite` по умолчанию; `supabase` для Supabase |
+| `SUPABASE_URL` | URL проекта Supabase | Требуется при `STORAGE_BACKEND=supabase` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Серверный ключ Supabase | Требуется при `STORAGE_BACKEND=supabase`; хранить только в окружении сервера |
+| `OWNER_PASSWORD` | Пароль кабинета владельца | Случайный пароль из `owner.env`, если не задан |
+| `SESSION_SECRET` | Секрет подписания сессий | Случайное значение из `owner.env`, если не задан |
+
+### Подключение Supabase
+
+1. Создайте проект Supabase и выполните `supabase/schema.sql` в SQL Editor.
+2. Скопируйте Project URL и серверный `service_role` key в переменные окружения сервера. Никогда не помещайте этот ключ в браузерный код или Git.
+3. Задайте `STORAGE_BACKEND=supabase` и перезапустите приложение. При пустой таблице `services` демонстрационный прайс будет добавлен автоматически.
+
+В режиме Supabase таблицы `services` и `requests` доступны только серверному ключу; публичная форма и админка обращаются к API Room by Room, а не к Supabase напрямую.
 
 Без GLB-файла интерактивная квартира отображается процедурной 3D-сценой. GLB добавляет внешнюю модель в сцену.
 
