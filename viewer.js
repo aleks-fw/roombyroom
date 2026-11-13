@@ -138,7 +138,7 @@ function init() {
  scene=new THREE.Scene();scene.background=new THREE.Color(0xe7ece4);scene.fog=new THREE.Fog(0xe7ece4,45,70);
  camera=new THREE.PerspectiveCamera(37,1,.1,100);camera.position.set(-9.5,13,14);
  controls=new OrbitControls(camera,canvas);controls.target.set(-.6,.3,0);controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=12;controls.maxDistance=34;controls.maxPolarAngle=Math.PI*.48;
- if(matchMedia('(pointer: coarse)').matches){controls.enableRotate=true;controls.enablePan=false;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;const hint=document.querySelector('#viewer-hint');if(hint)hint.textContent='Поворачивайте одним пальцем · двойное касание приближает';}
+ if(matchMedia('(pointer: coarse)').matches){canvas.style.touchAction='none';controls.enableRotate=true;controls.enablePan=false;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;const hint=document.querySelector('#viewer-hint');if(hint)hint.textContent='Проведите по модели для вращения · два касания приближают';}
  scene.add(new THREE.HemisphereLight(0xfff8e9,0x74796f,1.7)); const key=new THREE.DirectionalLight(0xffefd1,2.35);key.position.set(-4,8,5);key.castShadow=!compact;scene.add(key);
  apartment=new THREE.Group();scene.add(apartment);zoneMeshes=[];const roomFurniture={};
  for(const zone of ['living','bedroom','room12','kitchen','bathroom','toilet']) {roomFurniture[zone]=buildRoom(zone);if(zone==='bathroom'||zone==='toilet')roomFurniture[zone].scale.setScalar(1);}
