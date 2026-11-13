@@ -1,0 +1,16 @@
+{
+  "name": "roombyroom",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Адаптивный сайт ремонта квартир с интерактивной 3D-планировкой и кабинетом владельца",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "three": "0.187.0"
+  }
+}
