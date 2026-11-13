@@ -117,7 +117,8 @@ function finishBalconyAccess(){
  box(apartment,'balcony','balcony-door-frame-top',-6.52,1.16,-3.13,.08,.07,1.12,0x75543a);box(apartment,'balcony','balcony-door-frame-bottom',-6.52,.03,-3.13,.08,.07,1.12,0x75543a);
  box(apartment,'balcony','balcony-door-mullion',-6.48,.59,-3.13,.035,1.02,.035,0x75543a);
 }
-let renderFrame=0,viewerInView=true;
+let renderFrame=0,viewerInView=true,touchStart=null,lastTouchTap=null;
+const activeTouches=new Set();
 function scheduleRender(){
  if(renderFrame||!renderer||!viewerInView||document.hidden)return;
  renderFrame=requestAnimationFrame(()=>{
@@ -131,13 +132,13 @@ function scheduleRender(){
 function init() {
  const canvas=document.querySelector('#apartment-canvas'), fallback=document.querySelector('#viewer-fallback'), loader=document.querySelector('#viewer-loader'); if(!canvas||!fallback)return;
  const compact=matchMedia('(max-width: 640px)').matches||matchMedia('(pointer: coarse)').matches;
- try { renderer=new THREE.WebGLRenderer({canvas,antialias:!compact,alpha:true,powerPreference:'low-power'}); } catch(e) { loader?.remove(); return; }
+ try { renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'}); } catch(e) { loader?.remove(); return; }
  try {
- renderer.setPixelRatio(Math.min(devicePixelRatio||1,compact?1.15:1.5)); renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.shadowMap.enabled=!compact; renderer.shadowMap.type=THREE.PCFShadowMap;
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,2)); renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.shadowMap.enabled=!compact; renderer.shadowMap.type=THREE.PCFShadowMap;
  scene=new THREE.Scene();scene.background=new THREE.Color(0xe7ece4);scene.fog=new THREE.Fog(0xe7ece4,45,70);
  camera=new THREE.PerspectiveCamera(37,1,.1,100);camera.position.set(-9.5,13,14);
  controls=new OrbitControls(camera,canvas);controls.target.set(-.6,.3,0);controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=12;controls.maxDistance=34;controls.maxPolarAngle=Math.PI*.48;
- if(matchMedia('(pointer: coarse)').matches){controls.enableRotate=false;controls.enablePan=false;controls.touches.ONE=THREE.TOUCH.PAN;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;const hint=document.querySelector('#viewer-hint');if(hint)hint.textContent='Листайте страницу одним пальцем · приближайте двумя';}
+ if(matchMedia('(pointer: coarse)').matches){controls.enableRotate=true;controls.enablePan=false;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;const hint=document.querySelector('#viewer-hint');if(hint)hint.textContent='Поворачивайте одним пальцем · двойное касание приближает';}
  scene.add(new THREE.HemisphereLight(0xfff8e9,0x74796f,1.7)); const key=new THREE.DirectionalLight(0xffefd1,2.35);key.position.set(-4,8,5);key.castShadow=!compact;scene.add(key);
  apartment=new THREE.Group();scene.add(apartment);zoneMeshes=[];const roomFurniture={};
  for(const zone of ['living','bedroom','room12','kitchen','bathroom','toilet']) {roomFurniture[zone]=buildRoom(zone);if(zone==='bathroom'||zone==='toilet')roomFurniture[zone].scale.setScalar(1);}
@@ -146,7 +147,7 @@ function init() {
  for(const zone of Object.keys(roomFurniture)) simpleDecor(zone,roomFurniture[zone]);
  buildBalcony();
  finishBalconyAccess();
- raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();canvas.addEventListener('pointerup',onPick);canvas.addEventListener('dblclick',onDoublePick);
+ raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();canvas.addEventListener('pointerdown',onPointerDown);canvas.addEventListener('pointermove',onPointerMove);canvas.addEventListener('pointerup',onPick);canvas.addEventListener('pointercancel',onPointerCancel);canvas.addEventListener('dblclick',onDoublePick);
   controls.addEventListener('change',scheduleRender);
   for(const eventName of ['pointerdown','pointermove','pointerup','wheel'])canvas.addEventListener(eventName,scheduleRender,{passive:true});
   new ResizeObserver(()=>{resize();scheduleRender();}).observe(canvas.parentElement);resize();
@@ -160,7 +161,10 @@ function init() {
 }
 function resize(){if(!renderer||!camera)return;const target=document.querySelector('.viewer-wrap');const w=target?.clientWidth||560,h=target?.clientHeight||390;renderer.setSize(w,h,false);camera.aspect=w/h;const nextFit=Math.max(1,1.32/camera.aspect),ratio=nextFit/fitScale;if(controls&&Math.abs(ratio-1)>.01)camera.position.sub(controls.target).multiplyScalar(ratio).add(controls.target);fitScale=nextFit;camera.updateProjectionMatrix();scheduleRender();}
 function zoneAtPointer(event){const rect=event.currentTarget.getBoundingClientRect();pointer.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(zoneMeshes,false)[0]?.object.userData.zone;}
-function onPick(event){const zone=zoneAtPointer(event);if(zone)document.dispatchEvent(new CustomEvent('roombyroom:zone-pick',{detail:zone}));}
+function onPointerDown(event){if(event.pointerType!=='touch')return;activeTouches.add(event.pointerId);if(activeTouches.size===1)touchStart={x:event.clientX,y:event.clientY,moved:false};else{if(touchStart)touchStart.moved=true;lastTouchTap=null;}}
+function onPointerMove(event){if(!touchStart||event.pointerType!=='touch')return;if(Math.hypot(event.clientX-touchStart.x,event.clientY-touchStart.y)>10)touchStart.moved=true;}
+function onPointerCancel(event){if(event.pointerType!=='touch')return;activeTouches.delete(event.pointerId);if(!activeTouches.size){touchStart=null;lastTouchTap=null;}}
+function onPick(event){if(event.pointerType==='touch'){activeTouches.delete(event.pointerId);if(activeTouches.size){if(touchStart)touchStart.moved=true;return;}}const tap=event.pointerType!=='touch'||(touchStart&&!touchStart.moved);touchStart=null;if(!tap)return;const zone=zoneAtPointer(event);if(zone)document.dispatchEvent(new CustomEvent('roombyroom:zone-pick',{detail:zone}));if(event.pointerType==='touch'&&zone){const now=Date.now();if(lastTouchTap&&lastTouchTap.zone===zone&&now-lastTouchTap.time<360&&Math.hypot(event.clientX-lastTouchTap.x,event.clientY-lastTouchTap.y)<28){lastTouchTap=null;onDoublePick(event);}else lastTouchTap={zone,time:now,x:event.clientX,y:event.clientY};}}
 function onDoublePick(event){const zone=zoneAtPointer(event),center=centers[zone];if(!center||!camera||!controls)return;const target=new THREE.Vector3(center[0],.45,center[2]),offset=camera.position.clone().sub(controls.target).multiplyScalar(.72);controls.target.copy(target);camera.position.copy(target).add(offset);controls.update();scheduleRender();}
 function focusZone(zone){activeZone=zone;for(const floor of zoneMeshes){const active=floor.userData.zone===zone;floor.material.color.setHex(active?0xb8d7bd:colors[floor.userData.zone]);floor.material.emissive.setHex(active?0x294a34:0x000000);floor.material.emissiveIntensity=active ? 0.12 : 0;}scheduleRender();}
 function cameraAction(action){if(!camera||!controls)return;if(action==='reset'){camera.position.set(-9.5,13,14);controls.target.set(-.6,.3,0);}else{const delta=action==='zoom-in' ? .86 : 1.16;camera.position.sub(controls.target).multiplyScalar(delta).add(controls.target);}scheduleRender();}
